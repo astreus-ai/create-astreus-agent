@@ -2,7 +2,7 @@
 
 CLI tool to scaffold new Astreus AI agent projects with best practices and sensible defaults.
 
-[![npm version](https://badge.fury.io/js/create-astreus-agent.svg)](https://badge.fury.io/js/create-astreus-agent)
+[![npm version](https://badge.fury.io/js/@astreus-ai%2Fcreate-astreus-agent.svg)](https://badge.fury.io/js/@astreus-ai%2Fcreate-astreus-agent)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
