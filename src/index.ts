@@ -244,9 +244,7 @@ function generateMainFile(config: ProjectConfig): string {
   if (config.features.includes('graph')) {
     sdkImports.push('Graph');
   }
-  if (config.features.includes('plugins')) {
-    sdkImports.push('getPlugin');
-  }
+  // plugins feature uses agent.registerPlugin() - no additional import needed
 
   const imports = [
     `import { ${sdkImports.join(', ')} } from '@astreus-ai/astreus';`,
@@ -284,8 +282,7 @@ function generateMainFile(config: ProjectConfig): string {
   if (config.features.includes('knowledge')) {
     additionalSetup += `
   // Add documents to knowledge base (optional)
-  // const knowledge = new Knowledge({ agent });
-  // await knowledge.addDocument('./documents/guide.pdf');
+  // await agent.addKnowledgeFromFile('./documents/guide.pdf', { category: 'docs' });
 `;
   }
 
@@ -293,26 +290,30 @@ function generateMainFile(config: ProjectConfig): string {
     additionalSetup += `
   // Create a graph workflow (optional)
   // const graph = new Graph({ name: 'my-workflow' }, agent);
-  // graph.addAgentNode({ name: 'researcher', prompt: 'Research the topic' });
-  // graph.addAgentNode({ name: 'writer', prompt: 'Write about the research' });
-  // graph.link('researcher', 'writer');
-  // const result = await graph.run('Tell me about AI agents');
+  // const researchNode = graph.addTaskNode({ prompt: 'Research the topic' });
+  // const writeNode = graph.addTaskNode({ prompt: 'Write about the research', dependsOn: [researchNode] });
+  // const result = await graph.run();
+  // console.log(result.results);
 `;
   }
 
   if (config.features.includes('plugins')) {
     additionalSetup += `
   // Register custom plugins (optional)
-  // const myPlugin = getPlugin({
+  // const myPlugin = {
   //   name: 'my-plugin',
+  //   version: '1.0.0',
+  //   description: 'My custom plugin',
   //   tools: [{
   //     name: 'my_tool',
   //     description: 'My custom tool',
-  //     parameters: { query: { type: 'string', description: 'The query' } },
+  //     parameters: {
+  //       query: { type: 'string', description: 'The query', required: true }
+  //     },
   //     handler: async ({ query }) => ({ success: true, data: query })
   //   }]
-  // });
-  // agent.registerPlugin(myPlugin);
+  // };
+  // await agent.registerPlugin(myPlugin);
 `;
   }
 
@@ -321,8 +322,10 @@ function generateMainFile(config: ProjectConfig): string {
   // Create sub-agents for complex tasks (optional)
   // const researcher = await Agent.create({ name: 'researcher', model: '${model}' });
   // const writer = await Agent.create({ name: 'writer', model: '${model}' });
-  // agent.registerSubAgent(researcher);
-  // agent.registerSubAgent(writer);
+  // const result = await agent.executeWithSubAgents(
+  //   'Research and write about AI',
+  //   [researcher, writer]
+  // );
 `;
   }
 
@@ -354,7 +357,7 @@ ${additionalSetup}
       }
 
       try {
-        const response = await agent.run(input);
+        const response = await agent.ask(input);
         console.log(\`\\nAgent: \${response}\\n\`);
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : error);
