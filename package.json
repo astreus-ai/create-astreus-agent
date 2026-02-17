@@ -1,0 +1,49 @@
+{
+  "name": "create-astreus-agent",
+  "version": "0.5.37",
+  "description": "Create a new Astreus AI agent project with interactive setup",
+  "author": "Berke Kiran",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-astreus-agent": "./dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.8.2",
+    "chalk": "^5.3.0",
+    "fs-extra": "^11.2.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.19.25",
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/astreus-ai/create-astreus-agent"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "create",
+    "astreus",
+    "ai",
+    "agent",
+    "cli",
+    "scaffold"
+  ]
+}
