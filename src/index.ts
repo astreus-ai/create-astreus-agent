@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import path from 'path';
 
-const _VERSION = '0.5.37';
+const _VERSION = '0.5.38';
 
 interface ProjectConfig {
   name: string;
@@ -155,7 +155,7 @@ async function createProject(config: ProjectConfig) {
       start: config.typescript ? 'node dist/index.js' : 'node src/index.js',
     },
     dependencies: {
-      '@astreus-ai/sdk': 'latest',
+      '@astreus-ai/astreus': 'latest',
       dotenv: '^16.6.1',
     },
     devDependencies: config.typescript
@@ -193,10 +193,9 @@ async function createProject(config: ProjectConfig) {
     });
   }
 
-  // Create .env.example
+  // Create .env.example (user should copy to .env and add their keys)
   const envContent = getEnvContent(config.provider);
   await fs.writeFile(path.join(projectPath, '.env.example'), envContent);
-  await fs.writeFile(path.join(projectPath, '.env'), envContent);
 
   // Create .gitignore
   const gitignore = `node_modules/
@@ -222,79 +221,150 @@ function getEnvContent(provider: string): string {
   const envVars: Record<string, string> = {
     openai: 'OPENAI_API_KEY=your-api-key-here',
     anthropic: 'ANTHROPIC_API_KEY=your-api-key-here',
-    google: 'GOOGLE_API_KEY=your-api-key-here',
+    google: 'GEMINI_API_KEY=your-api-key-here',
     ollama: '# Ollama runs locally, no API key needed\nOLLAMA_HOST=http://localhost:11434',
     multiple: `# Add API keys for providers you want to use
 OPENAI_API_KEY=your-openai-key
 ANTHROPIC_API_KEY=your-anthropic-key
-GOOGLE_API_KEY=your-google-key`,
+GEMINI_API_KEY=your-gemini-key`,
   };
 
   return envVars[provider] || envVars.openai;
 }
 
 function generateMainFile(config: ProjectConfig): string {
-  const imports = ['import { Agent } from "@astreus-ai/sdk";', 'import "dotenv/config";'];
-
+  // Build imports based on selected features
+  const sdkImports = ['Agent'];
   if (config.features.includes('memory')) {
-    imports.push('import { MemoryModule } from "@astreus-ai/sdk";');
+    sdkImports.push('Memory');
   }
   if (config.features.includes('knowledge')) {
-    imports.push('import { KnowledgeModule } from "@astreus-ai/sdk";');
+    sdkImports.push('Knowledge');
   }
   if (config.features.includes('graph')) {
-    imports.push('import { GraphModule } from "@astreus-ai/sdk";');
+    sdkImports.push('Graph');
+  }
+  if (config.features.includes('plugins')) {
+    sdkImports.push('getPlugin');
   }
 
-  const providerMap: Record<string, { provider: string; model: string }> = {
-    openai: { provider: 'openai', model: 'gpt-4' },
-    anthropic: { provider: 'anthropic', model: 'claude-3-opus-20240229' },
-    google: { provider: 'google', model: 'gemini-pro' },
-    ollama: { provider: 'ollama', model: 'llama2' },
-    multiple: { provider: 'openai', model: 'gpt-4' },
+  const imports = [
+    `import { ${sdkImports.join(', ')} } from '@astreus-ai/astreus';`,
+    "import 'dotenv/config';",
+  ];
+
+  // Model mapping with updated model names
+  const modelMap: Record<string, string> = {
+    openai: 'gpt-4o',
+    anthropic: 'claude-sonnet-4-20250514',
+    google: 'gemini-2.0-flash',
+    ollama: 'llama3',
+    multiple: 'gpt-4o',
   };
 
-  const { provider, model } = providerMap[config.provider] || providerMap.openai;
+  const model = modelMap[config.provider] || modelMap.openai;
 
-  let moduleSetup = '';
+  // Build agent config options
+  const agentOptions: string[] = [
+    `    name: '${config.name}'`,
+    `    model: '${model}'`,
+    "    systemPrompt: 'You are a helpful AI assistant powered by Astreus.'",
+  ];
+
   if (config.features.includes('memory')) {
-    moduleSetup += `
-  // Memory module for persistent storage
-  const memory = new MemoryModule({
-    database: { type: "sqlite", path: "./data/memory.db" },
-  });
+    agentOptions.push('    memory: true');
+  }
+  if (config.features.includes('knowledge')) {
+    agentOptions.push('    knowledge: true');
+  }
+
+  // Build additional setup code for features
+  let additionalSetup = '';
+
+  if (config.features.includes('knowledge')) {
+    additionalSetup += `
+  // Add documents to knowledge base (optional)
+  // const knowledge = new Knowledge({ agent });
+  // await knowledge.addDocument('./documents/guide.pdf');
 `;
   }
 
-  let agentModules = '';
-  if (config.features.length > 0) {
-    const modules = [];
-    if (config.features.includes('memory')) modules.push('memory');
-    if (modules.length > 0) {
-      agentModules = `\n    modules: [${modules.join(', ')}],`;
-    }
+  if (config.features.includes('graph')) {
+    additionalSetup += `
+  // Create a graph workflow (optional)
+  // const graph = new Graph({ name: 'my-workflow' }, agent);
+  // graph.addAgentNode({ name: 'researcher', prompt: 'Research the topic' });
+  // graph.addAgentNode({ name: 'writer', prompt: 'Write about the research' });
+  // graph.link('researcher', 'writer');
+  // const result = await graph.run('Tell me about AI agents');
+`;
+  }
+
+  if (config.features.includes('plugins')) {
+    additionalSetup += `
+  // Register custom plugins (optional)
+  // const myPlugin = getPlugin({
+  //   name: 'my-plugin',
+  //   tools: [{
+  //     name: 'my_tool',
+  //     description: 'My custom tool',
+  //     parameters: { query: { type: 'string', description: 'The query' } },
+  //     handler: async ({ query }) => ({ success: true, data: query })
+  //   }]
+  // });
+  // agent.registerPlugin(myPlugin);
+`;
+  }
+
+  if (config.features.includes('subagents')) {
+    additionalSetup += `
+  // Create sub-agents for complex tasks (optional)
+  // const researcher = await Agent.create({ name: 'researcher', model: '${model}' });
+  // const writer = await Agent.create({ name: 'writer', model: '${model}' });
+  // agent.registerSubAgent(researcher);
+  // agent.registerSubAgent(writer);
+`;
   }
 
   return `${imports.join('\n')}
 
 async function main() {
-  console.log("🚀 Starting Astreus Agent...\\n");
-${moduleSetup}
-  const agent = new Agent({
-    name: "${config.name}",
-    model: {
-      provider: "${provider}",
-      name: "${model}",
-    },
-    systemPrompt: "You are a helpful AI assistant powered by Astreus.",${agentModules}
+  console.log('Starting Astreus Agent...\\n');
+
+  // Create the agent
+  const agent = await Agent.create({
+${agentOptions.join(',\n')},
+  });
+${additionalSetup}
+  // Interactive loop
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
   });
 
-  // Run the agent
-  const response = await agent.run({
-    prompt: "Hello! What can you help me with today?",
-  });
+  console.log('Agent ready! Type your message (or "exit" to quit):\\n');
 
-  console.log("Agent:", response.content);
+  const prompt = () => {
+    rl.question('You: ', async (input) => {
+      if (input.toLowerCase() === 'exit') {
+        console.log('\\nGoodbye!');
+        rl.close();
+        process.exit(0);
+      }
+
+      try {
+        const response = await agent.run(input);
+        console.log(\`\\nAgent: \${response}\\n\`);
+      } catch (error) {
+        console.error('Error:', error instanceof Error ? error.message : error);
+      }
+
+      prompt();
+    });
+  };
+
+  prompt();
 }
 
 main().catch(console.error);
