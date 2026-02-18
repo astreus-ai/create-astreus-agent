@@ -1,6 +1,6 @@
 {
   "name": "@astreus-ai/create-astreus-agent",
-  "version": "0.5.39",
+  "version": "0.5.40",
   "description": "Create a new Astreus AI agent project with interactive setup",
   "author": "Berke Kiran",
   "license": "MIT",
